@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Traffic Safety Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/regression@2.0.1/dist/regression.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+        .card-header {
+            background-color: #2a5298;
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .btn-primary {
+            background-color: #2a5298;
+            border-color: #1e3c72;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        .risk-high {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .risk-medium {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .risk-low {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .feature-importance {
+            margin-bottom: 15px;
+        }
+        .feature-bar {
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            overflow: hidden;
+        }
+        .feature-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #1e3c72, #2a5298);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-car-crash"></i> AI Traffic Safety Analyzer</h1>
+                    <p class="lead">Predicting and preventing accidents with machine learning</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <img src="https://cdn-icons-png.flaticon.com/512/2065/2065061.png" height="80" alt="Safety Icon">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Accident Risk Prediction</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="predictionForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="trafficDensity" class="form-label">Traffic Density (1-10)</label>
+                                        <input type="range" class="form-range" min="0" max="10" step="0.1" id="trafficDensity" value="5">
+                                        <div class="d-flex justify-content-between">
+                                            <small>Low</small>
+                                            <small>High</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="averageSpeed" class="form-label">Average Speed (mph)</label>
+                                        <input type="number" class="form-control" id="averageSpeed" value="30">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="vehicleCount" class="form-label">Vehicle Count</label>
+                                        <input type="number" class="form-control" id="vehicleCount" value="50">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="timeOfDay" class="form-label">Time of Day (hour)</label>
+                                        <input type="range" class="form-range" min="0" max="24" step="1" id="timeOfDay" value="12">
+                                        <div class="d-flex justify-content-between">
+                                            <small>12 AM</small>
+                                            <small>12 PM</small>
+                                            <small>12 AM</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="rainIntensity" class="form-label">Rain Intensity (0-5)</label>
+                                        <input type="range" class="form-range" min="0" max="5" step="0.1" id="rainIntensity" value="1">
+                                        <div class="d-flex justify-content-between">
+                                            <small>None</small>
+                                            <small>Heavy</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="urbanArea">
+                                        <label class="form-check-label" for="urbanArea">Urban Area</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="predictRisk()">Predict Accident Risk</button>
+                        </form>
+                        
+                        <div id="predictionResult" class="mt-4" style="display: none;">
+                            <h4>Prediction Result</h4>
+                            <div class="alert" id="riskLevel">
+                                <strong>Risk Level:</strong> <span id="riskText">Medium</span>
+                            </div>
+                            <p><strong>Predicted Accidents:</strong> <span id="predictedAccidents">15</span> per 1000 vehicles</p>
+                            <div class="progress mt-2" style="height: 20px;">
+                                <div id="riskBar" class="progress-bar" role="progressbar" style="width: 50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Accident Trends Over Time</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="timeChart"></canvas>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="timeGroup" id="hourly" value="hour" checked>
+                            <label class="form-check-label" for="hourly">By Hour</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="timeGroup" id="daily" value="day">
+                            <label class="form-check-label" for="daily">By Day Part</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Key Insights</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>Top Accident Factors</h6>
+                        <div id="featureImportance">
+                            <div class="feature-importance">
+                                <div>Traffic Density</div>
+                                <div class="feature-bar">
+                                    <div class="feature-progress" style="width: 85%"></div>
+                                </div>
+                            </div>
+                            <div class="feature-importance">
+                                <div>Time of Day</div>
+                                <div class="feature-bar">
+                                    <div class="feature-progress" style="width: 72%"></div>
+                                </div>
+                            </div>
+                            <div class="feature-importance">
+                                <div>Rain Intensity</div>
+                                <div class="feature-bar">
+                                    <div class="feature-progress" style="width: 65%"></div>
+                                </div>
+                            </div>
+                            <div class="feature-importance">
+                                <div>Average Speed</div>
+                                <div class="feature-bar">
+                                    <div class="feature-progress" style="width: 58%"></div>
+                                </div>
+                            </div>
+                            <div class="feature-importance">
+                                <div>Urban Area</div>
+                                <div class="feature-bar">
+                                    <div class="feature-progress" style="width: 42%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h6>Recent High-Risk Locations</h6>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Downtown Intersection
+                                <span class="badge bg-danger rounded-pill">High</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Highway Exit 42
+                                <span class="badge bg-warning rounded-pill">Medium</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Main Street Bridge
+                                <span class="badge bg-warning rounded-pill">Medium</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Safety Recommendations</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="recommendations">
+                            <div class="alert alert-info">
+                                <strong>For high traffic density:</strong> Consider implementing traffic light synchronization or roundabouts.
+                            </div>
+                            <div class="alert alert-info">
+                                <strong>During peak hours:</strong> Increase police patrols and traffic monitoring.
+                            </div>
+                            <div class="alert alert-info">
+                                <strong>In rainy conditions:</strong> Lower speed limits and increase signage visibility.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Accident Correlation Matrix</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="correlationChart"></canvas>
+                        </div>
+                        <p class="text-muted mt-2">This matrix shows how different factors correlate with accident frequency. Darker colors indicate stronger relationships.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>AI Traffic Safety Analyzer</h5>
+                    <p>Using machine learning to make roads safer for everyone.</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="mb-0">&copy; 2023 Road Safety Initiative. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize charts
+        document.addEventListener('DOMContentLoaded', function() {
+            // Time of day chart
+            const timeCtx = document.getElementById('timeChart').getContext('2d');
+            const timeChart = new Chart(timeCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                    datasets: [{
+                        label: 'Accidents per hour',
+                        data: [5, 4, 3, 2, 2, 3, 7, 12, 15, 14, 13, 14, 15, 14, 13, 14, 16, 18, 17, 15, 12, 9, 7, 6],
+                        borderColor: '#2a5298',
+                        backgroundColor: 'rgba(42, 82, 152, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Accidents'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Correlation matrix chart
+            const corrCtx = document.getElementById('correlationChart').getContext('2d');
+            const correlationChart = new Chart(corrCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Traffic Density', 'Time of Day', 'Rain', 'Speed', 'Urban', 'Vehicles', 'Pavement'],
+                    datasets: [{
+                        label: 'Correlation with Accidents',
+                        data: [0.72, 0.65, 0.58, 0.52, 0.45, 0.38, 0.32],
+                        backgroundColor: [
+                            'rgba(42, 82, 152, 0.7)',
+                            'rgba(42, 82, 152, 0.7)',
+                            'rgba(42, 82, 152, 0.7)',
+                            'rgba(42, 82, 152, 0.7)',
+                            'rgba(42, 82, 152, 0.7)',
+                            'rgba(42, 82, 152, 0.7)',
+                            'rgba(42, 82, 152, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(42, 82, 152, 1)',
+                            'rgba(42, 82, 152, 1)',
+                            'rgba(42, 82, 152, 1)',
+                            'rgba(42, 82, 152, 1)',
+                            'rgba(42, 82, 152, 1)',
+                            'rgba(42, 82, 152, 1)',
+                            'rgba(42, 82, 152, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            title: {
+                                display: true,
+                                text: 'Correlation Coefficient'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Time grouping radio buttons
+            document.querySelectorAll('input[name="timeGroup"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'hour') {
+                        timeChart.data.labels = Array.from({length: 24}, (_, i) => `${i}:00`);
+                        timeChart.data.datasets[0].data = [5, 4, 3, 2, 2, 3, 7, 12, 15, 14, 13, 14, 15, 14, 13, 14, 16, 18, 17, 15, 12, 9, 7, 6];
+                        timeChart.options.scales.x.title.text = 'Time of Day (Hour)';
+                    } else {
+                        timeChart.data.labels = ['Early Morning (12-6am)', 'Morning (6-12pm)', 'Afternoon (12-6pm)', 'Evening (6-12pm)'];
+                        timeChart.data.datasets[0].data = [3.5, 13, 14, 15];
+                        timeChart.options.scales.x.title.text = 'Time of Day (Part)';
+                    }
+                    timeChart.update();
+                });
+            });
+        });
+        
+        // Prediction function (simplified for demo)
+        function predictRisk() {
+            // Get input values
+            const trafficDensity = parseFloat(document.getElementById('trafficDensity').value);
+            const averageSpeed = parseFloat(document.getElementById('averageSpeed').value);
+            const vehicleCount = parseFloat(document.getElementById('vehicleCount').value);
+            const timeOfDay = parseFloat(document.getElementById('timeOfDay').value);
+            const rainIntensity = parseFloat(document.getElementById('rainIntensity').value);
+            const urbanArea = document.getElementById('urbanArea').checked ? 1 : 0;
+            
+            // Simple linear model for demonstration
+            // In a real application, this would use a trained ML model
+            const baseRisk = 5;
+            const densityFactor = trafficDensity * 1.2;
+            const timeFactor = Math.abs(timeOfDay - 12) * 0.3; // Higher risk around rush hours
+            const rainFactor = rainIntensity * 1.5;
+            const speedFactor = Math.max(0, averageSpeed - 30) * 0.1;
+            const urbanFactor = urbanArea * 2;
+            const vehicleFactor = vehicleCount * 0.05;
+            
+            // Calculate predicted accidents
+            let predictedAccidents = baseRisk + densityFactor + timeFactor + rainFactor + speedFactor + urbanFactor + vehicleFactor;
+            predictedAccidents = Math.round(predictedAccidents * 10) / 10; // Round to 1 decimal
+            
+            // Determine risk level
+            let riskLevel, riskClass;
+            if (predictedAccidents > 20) {
+                riskLevel = "High";
+                riskClass = "risk-high";
+                document.getElementById('riskBar').className = "progress-bar bg-danger";
+                document.getElementById('riskBar').style.width = "100%";
+            } else if (predictedAccidents > 12) {
+                riskLevel = "Medium";
+                riskClass = "risk-medium";
+                document.getElementById('riskBar').className = "progress-bar bg-warning";
+                document.getElementById('riskBar').style.width = "66%";
+            } else {
+                riskLevel = "Low";
+                riskClass = "risk-low";
+                document.getElementById('riskBar').className = "progress-bar bg-success";
+                document.getElementById('riskBar').style.width = "33%";
+            }
+            
+            // Update UI
+            document.getElementById('predictedAccidents').textContent = predictedAccidents;
+            document.getElementById('riskText').textContent = riskLevel;
+            document.getElementById('riskText').className = riskClass;
+            document.getElementById('riskLevel').className = `alert alert-${riskLevel.toLowerCase()}`;
+            
+            // Show results
+            document.getElementById('predictionResult').style.display = 'block';
+            
+            // Scroll to results
+            document.getElementById('predictionResult').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</body>
+</html>
